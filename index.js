@@ -146,7 +146,7 @@ app.post("/issue", (req, res) => {
 // READ GET ENDPOINTS
 app.get("/organization", authMiddleware, (req, res) => {
     const userId = req.body.userId;
-    const organizationId =  req.query.organizationId
+    const organizationId = parseInt(req.query.organizationId);
 
     const organization = ORGANIZATIONS.find(org => org.id === organizationId);
 
@@ -156,6 +156,17 @@ app.get("/organization", authMiddleware, (req, res) => {
         })
         return
     }
+
+    res.json({
+        ...organization,
+        members: organization.members.map(memberId => {
+            const user = USERS.find(user => user.id === memberId);
+            return {
+                id: user.id,
+                username: user.username
+            }
+        })
+    })
 })
 
 app.get("/boards", (req, res) => {
@@ -203,7 +214,7 @@ app.delete("/memebers", (req, res) => {
     organization.members = organization.members.filter(user => user.id !== memberUser.id);
 
     res.json({
-        message: "New member added!"
+        message: "member deleted"
     })
 })
 

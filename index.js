@@ -89,11 +89,49 @@ app.post("/signin", (req, res) => {
 })
 
 app.post("/organization", authMiddleware, (req, res) => {
-    const userId = req.userId
+    const userId = req.userId;
+    ORGANIZATIONS.push({
+        id: ORGANIZATIONS_ID++,
+        title: req.body.title,
+        description: req.body.description,
+        admin: userId,
+        members: []
+    })
+
+    res.json({
+        message: "Org created",
+        id: ORGANIZATIONS_ID - 1
+    })
 })
 
-app.post("/add-member-to-organization", (req, res) => {
-    
+app.post("/add-member-to-organization", authMiddleware, (req, res) => {
+    const userId = req.userId;
+    const organizationId = req.body.organizationId;
+    const memberUserUsername = req.body.memberUserUsername;
+
+    const organization = ORGANIZATIONS.find(org => org.id === organizationId);
+
+    if(!organization || organization.admin !== userId) {
+        res.status(411).json({
+            message: "Either this org doesn't exist or you are not an admin of this org"
+        })
+        return
+    }
+
+    const memberUser = USERS.find(u == u.username === memberUserUsername)
+
+    if(!memberUser) {
+        res.status(411).json({
+            message: "No user with this username exists in out db"
+        })
+        return
+    }
+
+    organization.members.push(memberUser.id);
+
+    res.json({
+        message: "New member added!"
+    })
 })
 
 app.post("/board", (req, res) => {
@@ -105,7 +143,21 @@ app.post("/issue", (req, res) => {
 })
 
 
-// READ
+// READ GET ENDPOINTS
+app.get("/organization", authMiddleware, (req, res) => {
+    const userId = req.body.userId;
+    const organizationId =  req.query.organizationId
+
+    const organization = ORGANIZATIONS.find(org => org.id === organizationId);
+
+    if(!organization || organization.admin !== userId) {
+        res.status(411).json({
+            message: "Either this org doesn't exist or you are not an admin of this org"
+        })
+        return
+    }
+})
+
 app.get("/boards", (req, res) => {
     
 })
@@ -126,7 +178,33 @@ app.put("/issues", (req, res) => {
 
 // DELETE
 app.delete("/memebers", (req, res) => {
+    const userId = req.userId;
+    const organizationId = req.body.organizationId;
+    const memberUserUsername = req.body.memberUserUsername;
 
+    const organization = ORGANIZATIONS.find(org => org.id === organizationId);
+
+    if(!organization || organization.admin !== userId) {
+        res.status(411).json({
+            message: "Either this org doesn't exist or you are not an admin of this org"
+        })
+        return
+    }
+
+    const memberUser = USERS.find(u == u.username === memberUserUsername)
+
+    if(!memberUser) {
+        res.status(411).json({
+            message: "No user with this username exists in out db"
+        })
+        return
+    }
+
+    organization.members = organization.members.filter(user => user.id !== memberUser.id);
+
+    res.json({
+        message: "New member added!"
+    })
 })
 
 app.listen(3000)

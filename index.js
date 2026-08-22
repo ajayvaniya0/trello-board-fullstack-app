@@ -114,7 +114,7 @@ app.post("/add-member-to-organization", authMiddleware,async (req, res) => {
         _id: organizationId
     })
 
-    if(!organization || organization.admin !== userId) {
+    if(!organization || organization.admin.toString() !== userId) {
         res.status(411).json({
             message: "Either this org doesn't exist or you are not an admin of this org"
         })
@@ -132,13 +132,8 @@ app.post("/add-member-to-organization", authMiddleware,async (req, res) => {
         return
     }
 
-    await organization.updateOne({
-        _id: organizationId
-    }, {
-        $push: {
-            "members" : memberUser._id
-        }
-    })
+    organization.members.push(memberUser._id)
+    await organization.save()
     // organization.members.push(memberUser.id);
 
     res.json({
@@ -186,7 +181,7 @@ app.get("/organization", authMiddleware, async (req, res) => {
         _id: organizationId
     })
 
-    if(!organization || organization.admin !== userId) {
+    if(!organization || organization.admin.toString() !== userId) {
         res.status(411).json({
             message: "Either this org doesn't exist or you are not an admin of this org"
         })
@@ -194,14 +189,7 @@ app.get("/organization", authMiddleware, async (req, res) => {
     }
 
     res.json({
-        ...organization,
-        members: organization.members.map(memberId => {
-            const user = USERS.find(user => user.id === memberId);
-            return {
-                id: user.id,
-                username: user.username
-            }
-        })
+        organization: organization
     })
 })
 
@@ -224,21 +212,26 @@ app.put("/issues", (req, res) => {
 })
 
 // DELETE
-app.delete("/memebers", (req, res) => {
+app.delete("/memebers", async (req, res) => {
     const userId = req.userId;
     const organizationId = req.body.organizationId;
     const memberUserUsername = req.body.memberUserUsername;
 
-    const organization = ORGANIZATIONS.find(org => org.id === organizationId);
+    // const organization = ORGANIZATIONS.find(org => org.id === organizationId);
+    const organization = await organizationModel.findOne({
+        _id: organizationId
+    })
 
-    if(!organization || organization.admin !== userId) {
+    if(!organization || organization.admin.toString() !== userId) {
         res.status(411).json({
             message: "Either this org doesn't exist or you are not an admin of this org"
         })
         return
     }
 
-    const memberUser = USERS.find(u == u.username === memberUserUsername)
+    const memberUser = await userModel.findOne({
+        username: memberUserUsername
+    })
 
     if(!memberUser) {
         res.status(411).json({
@@ -247,7 +240,15 @@ app.delete("/memebers", (req, res) => {
         return
     }
 
-    organization.members = organization.members.filter(user => user.id !== memberUser.id);
+    // await organizationModel.updateOne({
+    //     _id: organizationId
+    // }, {
+    //     "$pullAll" : {
+    //         members: memberUser._id
+    //     }
+    // })
+    organization.members = organization.members.filter(x => x !== memberUser._id)
+    await organization.save()
 
     res.json({
         message: "member deleted"
